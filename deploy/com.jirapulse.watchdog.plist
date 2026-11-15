@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!-- Jira Pulse watchdog: every minute + at login, keep the shared app up (scripts/share_watchdog.sh). Installed by make keep-up. -->
+<dict>
+  <key>Label</key><string>com.jirapulse.watchdog</string>
+  <key>ProgramArguments</key><array><string>/bin/bash</string><string>/Users/amitchaudhary/Amit/code-and-fun/learning_gen_ai/jira_intelligence_system/scripts/share_watchdog.sh</string></array>
+  <key>StartInterval</key><integer>60</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/Users/amitchaudhary/Amit/code-and-fun/learning_gen_ai/jira_intelligence_system/data/watchdog.launchd.log</string>
+  <key>StandardErrorPath</key><string>/Users/amitchaudhary/Amit/code-and-fun/learning_gen_ai/jira_intelligence_system/data/watchdog.launchd.log</string>
+</dict>
+</plist>

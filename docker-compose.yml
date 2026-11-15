@@ -1,0 +1,84 @@
+# Production login, pick one profile:
+#   --profile google      Caddy (HTTPS) + oauth2-proxy: "Sign in with Google", company domain only (AUTH_MODE=proxy)
+#   --profile cloudflare  Cloudflare Tunnel + Access (AUTH_MODE=cloudflare; needs a domain on Cloudflare)
+#   docker compose up -d --build
+#   docker compose logs -f
+services:
+  jira-pulse:
+    build: .
+    image: jira-pulse:latest            # deploy can also build this on your Mac and copy it (small VMs)
+    env_file: .env                      # secrets stay out of the image
+    environment:
+      APP_ENV: production
+    ports:
+      - "127.0.0.1:8010:8010"           # only the local proxy / gateway should reach it
+    volumes:
+      - ./team.yaml:/app/team.yaml:ro    # roles + emails (who is a developer, who "me" is)
+      - chat-data:/app/data              # chat history (SQLite) - survives restarts and rebuilds
+    restart: unless-stopped
+
+  # Cloudflare Tunnel: an outbound-only connection to Cloudflare, so the server needs NO open ports.
+  # Cloudflare Access (login) sits in front of it. Started only with:  docker compose --profile cloudflare up -d
+  # In the Zero Trust dashboard, the tunnel's public hostname points to:  http://jira-pulse:8010
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7
+    profiles: ["cloudflare"]
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}     # make deploy checks it is set
+    depends_on:
+      jira-pulse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---- Google sign-in on the VM itself (needs ports 80 + 443 and a DNS record PUBLIC_HOST -> the VM's IP)
+  # oauth2-proxy: the standard sign-in gateway. Only accounts in ALLOWED_EMAIL_DOMAINS get through; it then passes
+  # the verified email to the app in X-Forwarded-Email (the app runs AUTH_MODE=proxy).
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
+    profiles: ["google"]
+    environment:
+      OAUTH2_PROXY_PROVIDER: google
+      OAUTH2_PROXY_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      OAUTH2_PROXY_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_COOKIE_SECRET:-}
+      OAUTH2_PROXY_EMAIL_DOMAINS: ${ALLOWED_EMAIL_DOMAINS:-}
+      # where Google sends people back: the address users open (e.g. the workers.dev name in front of this VM)
+      OAUTH2_PROXY_REDIRECT_URL: ${OAUTH2_REDIRECT_URL:-https://${PUBLIC_HOST:-localhost}/oauth2/callback}
+      OAUTH2_PROXY_WHITELIST_DOMAINS: ${OAUTH2_WHITELIST_DOMAINS:-${PUBLIC_HOST:-localhost}}
+      OAUTH2_PROXY_UPSTREAMS: http://jira-pulse:8010
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+      OAUTH2_PROXY_COOKIE_SECURE: "true"
+      OAUTH2_PROXY_COOKIE_EXPIRE: 12h
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "false"     # show our product page (deploy/oauth2-templates) before Google
+      OAUTH2_PROXY_CUSTOM_TEMPLATES_DIR: /templates
+      OAUTH2_PROXY_PROMPT: select_account            # Google asks which account (pick the company one), not consent every time
+      OAUTH2_PROXY_PASS_USER_HEADERS: "true"         # X-Forwarded-Email -> the app
+      OAUTH2_PROXY_FLUSH_INTERVAL: 100ms             # chat answers stream word by word
+    volumes:
+      - ./deploy/oauth2-templates:/templates:ro
+    depends_on:
+      jira-pulse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Caddy: HTTPS with a free, auto-renewed Let's Encrypt certificate for PUBLIC_HOST.
+  caddy:
+    image: caddy:2.10.2
+    profiles: ["google"]
+    ports:
+      - "80:80"                         # certificate check + redirect to https
+      - "443:443"
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data                # the certificate - keep it, Let's Encrypt limits re-issuing
+    depends_on:
+      - oauth2-proxy
+    restart: unless-stopped
+
+volumes:
+  chat-data:                            # a named volume, so the app user (uid 10001) can write to it
+  caddy-data:

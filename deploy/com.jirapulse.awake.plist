@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!-- Jira Pulse: keep the Mac from sleeping (caffeinate -i -s: no idle sleep, also on battery; no system sleep on power).
+     The screen can still turn off. Closing the lid still sleeps (macOS rule). Installed by make keep-up. -->
+<dict>
+  <key>Label</key><string>com.jirapulse.awake</string>
+  <key>ProgramArguments</key><array><string>/usr/bin/caffeinate</string><string>-i</string><string>-s</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+</dict>
+</plist>

@@ -1,0 +1,28 @@
+[project]
+name = "jira-pm-agent"
+version = "0.1.0"
+description = "Learning project 5: a chat agent that answers product-manager questions from Jira (OpenAI Agents SDK + Inception Mercury)"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "httpx>=0.28.1",
+    "openai-agents>=0.24.0",
+    "pyjwt[crypto]>=2.10",
+    "python-dotenv>=1.2.4",
+    "pyyaml>=6.0.3",
+    "rich>=15.0.0",
+    "uvicorn[standard]>=0.32",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "jira_pm"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]

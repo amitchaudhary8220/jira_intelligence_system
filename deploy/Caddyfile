@@ -1,0 +1,17 @@
+# HTTPS for the public hostname (Caddy gets and renews a free Let's Encrypt certificate by itself),
+# then everything goes to oauth2-proxy, which makes people sign in with Google before reaching the app.
+{$PUBLIC_HOST} {
+	encode zstd gzip
+
+	# Identity headers must only ever come from oauth2-proxy (after a real Google sign-in).
+	# Drop any the browser sends, so nobody can claim to be someone else.
+	request_header -X-Forwarded-Email
+	request_header -X-Forwarded-User
+	request_header -X-Forwarded-Preferred-Username
+	request_header -X-Forwarded-Groups
+	request_header -X-Forwarded-Access-Token
+	request_header -X-Auth-Request-Email
+	request_header -X-Auth-Request-User
+
+	reverse_proxy oauth2-proxy:4180
+}

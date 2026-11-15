@@ -1,0 +1,7 @@
+# Cloudflare Worker that gives the shared app a fixed address: https://jira-pulse.<subdomain>.workers.dev
+# Deployed by scripts/share_local.sh (make share) with TARGET = the Mac's current quick-tunnel link.
+name = "jira-pulse"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+preview_urls = false
